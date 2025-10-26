@@ -1,7 +1,8 @@
 const Razorpay = require('razorpay');
+const Order = require('../models/order');
 
 async function createOrder(req, res, next) {
-  const { amount, currency, receipt, description } = req.body;
+  const { amount, currency, receipt, description, items } = req.body;
   try {
     const instance = new Razorpay({
       key_id: process.env.RAZORPAY_KEY_ID,
@@ -13,22 +14,32 @@ async function createOrder(req, res, next) {
       currency,
       receipt,
       notes: {
-        description
-      }
+        description,
+      },
     });
 
     if (response.error) {
       return res.status(500).json({
         message: 'Failed to create order',
-        detail: response.error,
+        details: response.error,
       });
     }
 
-    return res.status(201).json({ data: response });
+    const order = await Order.create({
+      amount,
+      currency,
+      receipt,
+      items,
+      razorpay_order_id: response.id,
+      notes: response.notes,
+    });
+
+    return res.status(201).json(order);
   } catch (error) {
+    console.log(error);
     return await res.status(500).json({
       message: 'Failed to create order',
-      detail: error.message,
+      details: error.message,
     });
   }
 }

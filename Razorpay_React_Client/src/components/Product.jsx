@@ -1,45 +1,21 @@
+import axiosInstance from '../config/axios';
 import { ORDER_URL, RAZORPAY_KEY, VERIFY_PAYMENT_URL } from '../constants';
 
 const Product = ({ product, loading = false, setLoading = () => {} }) => {
   const paymentHandler = async (e) => {
     try {
       setLoading(true);
-      const host = import.meta.env.VITE_SERVER_URL;
 
       // creating razorpay order
-      const res = await fetch(`${host}${ORDER_URL}`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        credentials: 'include',
-        body: JSON.stringify({
-          amount: product.price,
-          currency: 'INR',
-          receipt: `receipt - ${Date.now()}`,
-          description: `Purchased ${product.name}`,
-        }),
+      const { data: order_data } = await axiosInstance.post(`${ORDER_URL}`, {
+        amount: product.price,
+        currency: 'INR',
+        receipt: `receipt - ${Date.now()}`,
+        description: `Purchased ${product.name}`,
+        items: [product.name],
       });
 
-      if (!res.ok || res.status !== 201) {
-        console.log(res.error);
-        throw new Error(res.error);
-      }
-
-      const result = await res.json();
-
-      const { id: order_id, amount, currency, notes } = result.data;
-
-      let order = {
-        razorpay_order_id: order_id,
-        amount,
-        currency,
-        notes,
-      };
-
-      let payment = {
-        order_id,
-      };
+      const { razorpay_order_id, amount, currency, notes, _id } = order_data;
 
       // opening razorpay payment window
       var options = {
@@ -49,37 +25,21 @@ const Product = ({ product, loading = false, setLoading = () => {} }) => {
         name: 'Divyansh Business', //your business name
         description: notes?.description || '',
         image: 'https://example.com/your_logo',
-        order_id,
+        order_id: razorpay_order_id,
         handler: async function (response) {
-          const { razorpay_payment_id, razorpay_order_id, razorpay_signature } =
-            response;
-          payment = {
-            ...payment,
-            razorpay_payment_id,
-            razorpay_order_id,
-            razorpay_signature,
-          };
+          const { razorpay_payment_id, razorpay_signature } = response;
 
-          const verification_res = await fetch(`${host}${VERIFY_PAYMENT_URL}`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            credentials: 'include',
-            body: JSON.stringify({
-              order_id,
+          const { data: verification_data } = await axiosInstance.post(
+            `${VERIFY_PAYMENT_URL}`,
+            {
+              order: _id,
+              razorpay_order_id,
               razorpay_payment_id,
               razorpay_signature,
-            }),
-          });
+            }
+          );
 
-          if(!verification_res.ok || verification_res.status !== 200) {
-            console.log(verification_res.error);
-            throw new Error(verification_res.error);
-          }
-
-          const result = await verification_res.json();
-          console.log(result);
+          console.log(verification_data);
         },
         prefill: {
           //CUSTOMER DETAILS
@@ -96,20 +56,20 @@ const Product = ({ product, loading = false, setLoading = () => {} }) => {
       };
 
       var paymentObject = new window.Razorpay(options);
-      paymentObject.on('payment.failed', function (response) {
-        alert(response.error.code);
-        alert(response.error.description);
-        alert(response.error.source);
-        alert(response.error.step);
-        alert(response.error.reason);
-        alert(response.error.metadata.order_id);
-        alert(response.error.metadata.payment_id);
-      });
+      // paymentObject.on('payment.failed', function (response) {
+      //   alert(response.error.code);
+      //   alert(response.error.description);
+      //   alert(response.error.source);
+      //   alert(response.error.step);
+      //   alert(response.error.reason);
+      //   alert(response.error.metadata.order_id);
+      //   alert(response.error.metadata.payment_id);
+      // });
 
       paymentObject.open();
       e.preventDefault();
     } catch (error) {
-      console.log(error);
+      console.log(error.response.data);
     } finally {
       setLoading(false);
     }
