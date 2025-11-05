@@ -51,8 +51,8 @@ const updatePaymentStatus = async (req, res, next) => {
     .digest('hex');
 
   if (generatedSignature !== signature) {
-    console.error('⚠️ Webhook signature verification failed');
-    return res.status(400).send('Invalid signature');
+    console.error('⚠️ Webhook signature verification failed'.red);
+    return res.status(400).json({ message: 'Invalid signature' });
   }
 
   const webhook_body = JSON.parse(webhook_body_string);

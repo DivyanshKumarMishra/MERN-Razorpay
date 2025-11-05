@@ -1,7 +1,10 @@
 import axiosInstance from '../config/axios';
+import { useNavigate } from 'react-router-dom';
 import { ORDER_URL, RAZORPAY_KEY, VERIFY_PAYMENT_URL } from '../constants';
 
 const Product = ({ product, loading = false, setLoading = () => {} }) => {
+  const navigate = useNavigate();
+
   const paymentHandler = async (e) => {
     try {
       setLoading(true);
@@ -39,6 +42,10 @@ const Product = ({ product, loading = false, setLoading = () => {} }) => {
             }
           );
 
+          navigate('/payment-status', {
+            state: verification_data,
+          });
+
           console.log(verification_data);
         },
         prefill: {
@@ -56,16 +63,6 @@ const Product = ({ product, loading = false, setLoading = () => {} }) => {
       };
 
       var paymentObject = new window.Razorpay(options);
-      // paymentObject.on('payment.failed', function (response) {
-      //   alert(response.error.code);
-      //   alert(response.error.description);
-      //   alert(response.error.source);
-      //   alert(response.error.step);
-      //   alert(response.error.reason);
-      //   alert(response.error.metadata.order_id);
-      //   alert(response.error.metadata.payment_id);
-      // });
-
       paymentObject.open();
       e.preventDefault();
     } catch (error) {
